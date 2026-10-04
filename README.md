@@ -4,6 +4,13 @@ Mirage is a cross-platform pixel-art editor written in **Java + JavaFX**.
 
 ![Mirage Cover Image](cover.png)
 
+## Philosophy
+
+This project is part of the Intentional Computing project.
+
+See:
+https://github.com/arsjobus/intentional-computing
+
 ## Generated pixel art
 
 ![64×64 Nether portal look-alike sprite](output/nether-portal-lookalike.png)
