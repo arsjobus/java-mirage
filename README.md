@@ -145,7 +145,7 @@ git push origin v0.1.0
 ## Project structure
 
 ```text
-pixelforge/
+mirage/
 ├── README.md
 ├── ROADMAP.md
 ├── LICENSE
@@ -155,7 +155,7 @@ pixelforge/
 ├── .gitignore
 └── src/
     ├── main/
-    │   ├── java/com/pixelforge/
+    │   ├── java/com/mirage/
     │   │   ├── App.java
     │   │   ├── core/
     │   │   │   ├── document/Document.java
@@ -176,7 +176,7 @@ pixelforge/
     │   │   └── ui/MainWindow.java
     │   └── resources/
     └── test/
-        └── java/com/pixelforge/core/image/PixelImageTest.java
+        └── java/com/mirage/core/image/PixelImageTest.java
 ```
 
 ## Architecture

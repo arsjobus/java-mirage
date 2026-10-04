@@ -36,13 +36,13 @@ jobs:
 
       - name: Rename platform JAR
         shell: bash
-        run: mv target/pixelforge-0.1.0-SNAPSHOT.jar target/pixelforge-${{ matrix.platform }}.jar
+        run: mv target/mirage-0.1.0-SNAPSHOT.jar target/mirage-${{ matrix.platform }}.jar
 
       - name: Upload runnable JAR
         uses: actions/upload-artifact@v4
         with:
-          name: pixelforge-${{ matrix.platform }}
-          path: target/pixelforge-${{ matrix.platform }}.jar
+          name: mirage-${{ matrix.platform }}
+          path: target/mirage-${{ matrix.platform }}.jar
           if-no-files-found: error
 
   release:

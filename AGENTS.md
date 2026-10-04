@@ -1,4 +1,4 @@
-# Copilot instructions for PixelForge
+# Copilot instructions for Mirage
 
 ## Build, run, and test
 
@@ -9,7 +9,7 @@ Requires JDK 25+ and Maven 3.9+.
 - Run one test class: `mvn -Dtest=PixelImageTest test`
 - Run one test method: `mvn -Dtest=PixelImageTest#rejectsInvalidDimensions test`
 - Build and test the runnable JAR: `mvn clean package`
-- Launch the packaged application: `java -jar target/pixelforge-0.1.0-SNAPSHOT.jar`
+- Launch the packaged application: `java -jar target/mirage-0.1.0-SNAPSHOT.jar`
 
 There is no separate lint command configured in `pom.xml`. Release builds run
 `mvn --batch-mode clean package` on Java 25 when a `v*` tag is pushed.
@@ -33,7 +33,7 @@ There is no separate lint command configured in `pom.xml`. Release builds run
   and an optional pixel grid. Do not create a JavaFX node per pixel.
 - `tools/` contains editing operations over the image and command manager;
   tool selection and pointer-event handling remain in `MainWindow`.
-- The optional stdio MCP server (`mcp/PixelForgeMcpServer`) is started by
+- The optional stdio MCP server (`mcp/MirageMcpServer`) is started by
   `App` with `--mcp`. MCP requests that read or edit the visible document are
   dispatched to the JavaFX application thread and use `MainWindow`'s MCP
   methods, so UI and MCP edits share the same document, renderer, and undo
@@ -43,12 +43,12 @@ There is no separate lint command configured in `pom.xml`. Release builds run
 
 ## Repository-specific conventions
 
-- Use the `com.pixelforge` package hierarchy: image/document model in `core`,
+- Use the `com.mirage` package hierarchy: image/document model in `core`,
   undoable changes in `commands`, canvas presentation in `rendering`, UI event
   coordination in `ui`, and MCP protocol/session code in `mcp`.
 - Store colors as packed ARGB integers (`0xAARRGGBB`); zero is transparent.
 - Core behavior is covered with JUnit 5 tests under the matching
-  `src/test/java/com/pixelforge/...` package. Test model, command, tool, image
+  `src/test/java/com/mirage/...` package. Test model, command, tool, image
   I/O, and MCP session behavior without starting JavaFX where possible.
 - MCP canvas inputs are deliberately bounded and validated in
   `PixelCanvasSession`: canvases are at most 1024 × 1024, pixel batches at
