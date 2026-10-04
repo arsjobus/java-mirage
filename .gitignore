@@ -2,3 +2,6 @@
 /target/
 /dependency-reduced-pom.xml
 /output/
+!/output/
+/output/*
+!/output/nether-portal-lookalike.png

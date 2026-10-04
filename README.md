@@ -4,6 +4,14 @@ Mirage is a cross-platform pixel-art editor written in **Java + JavaFX**.
 
 ![Mirage Cover Image](cover.png)
 
+## Generated pixel art
+
+![64×64 Nether portal look-alike sprite](output/nether-portal-lookalike.png)
+
+Prompt used:
+
+> draw a 64x64 nether portal look-alike sprite with white background
+
 ## Technology
 
 - Java 25 LTS
