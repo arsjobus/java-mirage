@@ -59,7 +59,9 @@ public final class MainWindow {
     private double offsetY = 50;
     private int currentColor = PixelColor.BLACK;
     private String activeTool = "Pencil";
-    private boolean showGrid = true;
+    private boolean showGrid;
+    private int gridCellWidth = 16;
+    private int gridCellHeight = 16;
 
     private double panStartX, panStartY;
     private double originalOffsetX, originalOffsetY;
@@ -244,15 +246,46 @@ public final class MainWindow {
         edit.getItems().addAll(undo, redo);
 
         Menu view = new Menu("View");
-        CheckMenuItem grid = new CheckMenuItem("Pixel Grid");
+        CheckMenuItem grid = new CheckMenuItem("Grid");
         grid.setSelected(showGrid);
         grid.setOnAction(e -> {
             showGrid = grid.isSelected();
             redraw();
         });
-        view.getItems().add(grid);
+        MenuItem gridSettings = new MenuItem("Grid Settings...");
+        gridSettings.setOnAction(e -> showGridSettings());
+        view.getItems().addAll(grid, gridSettings);
 
         return new MenuBar(file, edit, view);
+    }
+
+    private void showGridSettings() {
+        Spinner<Integer> width = new Spinner<>(1, 1024, gridCellWidth);
+        Spinner<Integer> height = new Spinner<>(1, 1024, gridCellHeight);
+        width.setPrefWidth(100);
+        height.setPrefWidth(100);
+
+        GridPane content = new GridPane();
+        content.setHgap(8);
+        content.setVgap(8);
+        content.setPadding(new Insets(10));
+        content.addRow(0, new Label("Cell width"), width);
+        content.addRow(1, new Label("Cell height"), height);
+
+        ButtonType apply = new ButtonType("Apply", ButtonBar.ButtonData.OK_DONE);
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Grid Settings");
+        dialog.setHeaderText("Set the grid cell size");
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().addAll(
+                apply, ButtonType.CANCEL
+        );
+
+        dialog.showAndWait().filter(apply::equals).ifPresent(result -> {
+            gridCellWidth = width.getValue();
+            gridCellHeight = height.getValue();
+            redraw();
+        });
     }
 
     private Node buildToolbar() {
@@ -608,7 +641,9 @@ public final class MainWindow {
                 zoom,
                 offsetX,
                 offsetY,
-                showGrid
+                showGrid,
+                gridCellWidth,
+                gridCellHeight
         );
         drawSymmetryGuides(gc);
     }

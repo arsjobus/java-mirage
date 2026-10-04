@@ -22,7 +22,9 @@ public final class CanvasRenderer {
             double zoom,
             double offsetX,
             double offsetY,
-            boolean showGrid
+            boolean showGrid,
+            int gridCellWidth,
+            int gridCellHeight
     ) {
         gc.setFill(Color.rgb(38, 38, 38));
         gc.fillRect(0, 0, gc.getCanvas().getWidth(), gc.getCanvas().getHeight());
@@ -54,8 +56,11 @@ public final class CanvasRenderer {
                 width * zoom, height * zoom
         );
 
-        if (showGrid && zoom >= 4.0) {
-            drawGrid(gc, width, height, zoom, offsetX, offsetY);
+        if (showGrid) {
+            drawGrid(
+                    gc, width, height, zoom, offsetX, offsetY,
+                    gridCellWidth, gridCellHeight
+            );
         }
     }
 
@@ -102,19 +107,25 @@ public final class CanvasRenderer {
             int height,
             double zoom,
             double offsetX,
-            double offsetY
+            double offsetY,
+            int cellWidth,
+            int cellHeight
     ) {
         gc.setStroke(Color.rgb(80, 80, 80, 0.65));
         gc.setLineWidth(1.0);
 
-        for (int x = 0; x <= width; x++) {
+        for (int x = 0; x < width; x += cellWidth) {
             double sx = Math.round(offsetX + x * zoom) + 0.5;
             gc.strokeLine(sx, offsetY, sx, offsetY + height * zoom);
         }
+        double right = Math.round(offsetX + width * zoom) + 0.5;
+        gc.strokeLine(right, offsetY, right, offsetY + height * zoom);
 
-        for (int y = 0; y <= height; y++) {
+        for (int y = 0; y < height; y += cellHeight) {
             double sy = Math.round(offsetY + y * zoom) + 0.5;
             gc.strokeLine(offsetX, sy, offsetX + width * zoom, sy);
         }
+        double bottom = Math.round(offsetY + height * zoom) + 0.5;
+        gc.strokeLine(offsetX, bottom, offsetX + width * zoom, bottom);
     }
 }

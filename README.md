@@ -22,7 +22,7 @@ The included base implements:
 - Pixel image buffer
 - Pixel-perfect Canvas rendering
 - Zoom and pan
-- Pixel grid
+- Configurable canvas grid (off by default)
 - Pencil
 - Eraser
 - Eyedropper
