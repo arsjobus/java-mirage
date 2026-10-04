@@ -54,7 +54,7 @@ mvn test
 Mirage includes an optional stdio MCP server so coding agents can create
 and draw on the canvas shown in the desktop window. Build the app first with
 `mvn package`. In VS Code, the checked-in `.vscode/mcp.json` registers the
-server and writes images to `pixel-art-output/` in the workspace. Starting the
+server and writes images to `output/` in the workspace. Starting the
 MCP server starts a separate Java process and also opens Mirage; use that
 window to watch the agent draw. To allow Mirage tools without repeated
 approval prompts, run **Chat: Manage Tool Approval** in VS Code and trust all
@@ -92,7 +92,7 @@ To run the server manually, use:
 
 ```bash
 java -jar target/mirage-0.1.0-SNAPSHOT.jar \
-  --mcp --output-dir pixel-art-output
+  --mcp --output-dir output
 ```
 
 MCP edits are applied to the visible document, redraw the canvas immediately,

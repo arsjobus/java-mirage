@@ -8,7 +8,7 @@
         "${workspaceFolder}/target/mirage-0.1.0-SNAPSHOT.jar",
         "--mcp",
         "--output-dir",
-        "${workspaceFolder}/pixel-art-output"
+        "${workspaceFolder}/output"
       ]
     }
   }

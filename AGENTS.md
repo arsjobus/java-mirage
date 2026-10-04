@@ -56,4 +56,4 @@ There is no separate lint command configured in `pom.xml`. Release builds run
   regions at most 64 × 64. Preserve whole-request validation before applying
   MCP changes.
 - The workspace MCP registration is `.vscode/mcp.json`; it launches the
-  packaged JAR with `--mcp` and writes output under `pixel-art-output/`.
+  packaged JAR with `--mcp` and writes output under `output/`.

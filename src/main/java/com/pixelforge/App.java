@@ -43,7 +43,7 @@ public final class App extends Application {
     private static Path outputDirectory(List<String> args) {
         int optionIndex = args.indexOf("--output-dir");
         if (optionIndex < 0) {
-            return Path.of("pixel-art-output");
+            return Path.of("output");
         }
         if (optionIndex + 1 >= args.size()
                 || args.get(optionIndex + 1).startsWith("--")
