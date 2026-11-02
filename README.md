@@ -72,13 +72,17 @@ mvn test
 
 Mirage includes an optional stdio MCP server so coding agents can create
 and draw on the canvas shown in the desktop window. Build the app first with
-`mvn package`. In VS Code, the checked-in `.vscode/mcp.json` registers the
-server and writes images to `output/` in the workspace. Starting the
+`mvn package`. The root `.mcp.json` registers the server with Copilot CLI; run
+`copilot` from the repository root and its built-in MCP support will load it.
+In VS Code, the checked-in `.vscode/mcp.json` registers the same server.
+Both configurations write images to `output/` in the workspace. Starting the
 MCP server starts a separate Java process and also opens Mirage; use that
 window to watch the agent draw. To allow Mirage tools without repeated
 approval prompts, run **Chat: Manage Tool Approval** in VS Code and trust all
 tools under the Mirage MCP server. VS Code stores tool approvals outside
 `.vscode/mcp.json`, so they are not shared through the workspace config.
+In Copilot CLI, use `/mcp` to view and manage server configuration and approve
+Mirage's tools when prompted.
 
 The server provides:
 
