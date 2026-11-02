@@ -44,11 +44,11 @@
 
 ## v0.3 — Transformations and project format
 
-- [ ] Flip horizontal/vertical
+- [x] Flip horizontal/vertical
 - [ ] Rotate 90 degrees
 - [ ] Crop
 - [ ] Resize canvas/image
-- [ ] Versioned `.pxf` project format
+- [ ] Versioned `.mpa` project format
 - [ ] Save/load layers
 - [ ] Save/load metadata
 - [ ] Autosave

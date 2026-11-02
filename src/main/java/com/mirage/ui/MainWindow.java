@@ -1,6 +1,7 @@
 package com.mirage.ui;
 
 import com.mirage.commands.CommandManager;
+import com.mirage.commands.FlipDocumentCommand;
 import com.mirage.commands.DocumentLayerStateCommand;
 import com.mirage.commands.DocumentSelectionCommand;
 import com.mirage.commands.SetPixelBatchCommand;
@@ -286,6 +287,18 @@ public final class MainWindow {
                 copy, cut, paste
         );
 
+        Menu transform = new Menu("Transform");
+        MenuItem flipHorizontal = new MenuItem("Flip Horizontal");
+        flipHorizontal.setOnAction(e -> flipDocument(
+                FlipDocumentCommand.Direction.HORIZONTAL
+        ));
+        MenuItem flipVertical = new MenuItem("Flip Vertical");
+        flipVertical.setOnAction(e -> flipDocument(
+                FlipDocumentCommand.Direction.VERTICAL
+        ));
+        transform.getItems().addAll(flipHorizontal, flipVertical);
+        edit.getItems().addAll(new SeparatorMenuItem(), transform);
+
         Menu view = new Menu("View");
         CheckMenuItem grid = new CheckMenuItem("Grid");
         grid.setSelected(showGrid);
@@ -298,6 +311,12 @@ public final class MainWindow {
         view.getItems().addAll(grid, gridSettings);
 
         return new MenuBar(file, edit, view);
+    }
+
+    private void flipDocument(FlipDocumentCommand.Direction direction) {
+        commands.execute(new FlipDocumentCommand(document, direction));
+        document.setModified(true);
+        redraw();
     }
 
     private void showGridSettings() {
