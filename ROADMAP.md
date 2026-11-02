@@ -44,15 +44,37 @@
 
 ## v0.3 — Transformations and project format
 
-- [x] Flip horizontal/vertical
-- [x] Rotate 90 degrees
-- [ ] Crop
-- [ ] Resize canvas/image
-- [ ] Versioned `.mpa` project format
-- [ ] Save/load layers
-- [ ] Save/load metadata
-- [ ] Autosave
-- [ ] Crash recovery
+### Transformations
+
+- [x] Flip the whole document horizontally/vertically
+- [x] Rotate the whole document 90 degrees clockwise/counterclockwise
+- [ ] Crop the whole document to the selection bounds
+- [ ] Resize canvas without scaling artwork
+  - [ ] Set width/height and choose an anchor
+  - [ ] Keep existing pixels in place relative to the anchor; expose transparent pixels
+- [ ] Resize image, scaling artwork with nearest-neighbor sampling
+- [ ] Preserve layer order/properties and transform the selection with every operation
+- [ ] Make each operation one undoable command; verify undo/redo restores pixels, dimensions, and selection
+
+All document-wide transformations apply consistently to every layer. The initial resize implementation is nearest-neighbor only; other resampling modes are out of scope for pixel art.
+
+### Native project format
+
+- [ ] Specify and document `.mpa` format version 1 before implementation
+- [ ] Store the project as a ZIP container with a JSON manifest and lossless RGBA layer images
+- [ ] Save/load canvas dimensions, layer pixel data, order, names, visibility, lock state, opacity, and active layer
+- [ ] Record format version and application version; reject unsupported major versions with a useful error
+- [ ] Validate the complete archive and manifest before replacing the open document
+- [ ] Save atomically so an interrupted save does not corrupt the previous project
+- [ ] Round-trip test transparent pixels, multiple layers, metadata, and malformed/unsupported files
+
+Version 1 is for editable still-image documents. Selection and undo history are transient and are not saved. Keep the manifest extensible for future frames, palettes, and tiles; do not serialize Java objects or make future fields mandatory for version 1 readers.
+
+### Recovery
+
+- [ ] Add autosave only after native save/load is reliable
+- [ ] Offer crash recovery without overwriting the last explicitly saved project
+- [ ] Clear recovered state after a successful explicit save or user dismissal
 
 ## v0.4 — Animation
 
@@ -239,7 +261,13 @@ Selections
 Transformations
     |
     v
-Project format
+Project format specification
+    |
+    v
+Project save/load and round-trip tests
+    |
+    v
+Autosave/recovery
     |
     v
 Animation
