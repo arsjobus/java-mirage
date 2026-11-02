@@ -1,8 +1,10 @@
 package com.mirage.ui;
 
 import com.mirage.commands.CommandManager;
+import com.mirage.commands.DocumentLayerStateCommand;
 import com.mirage.commands.SetPixelBatchCommand;
 import com.mirage.core.document.Document;
+import com.mirage.core.document.Layer;
 import com.mirage.core.image.PixelColor;
 import com.mirage.core.image.PixelImage;
 import com.mirage.io.ImageExporter;
@@ -49,6 +51,11 @@ public final class MainWindow {
     private final Spinner<Integer> symmetryCenterY =
             new Spinner<>(0, 1024, 16);
     private final Spinner<Integer> radialCopies = new Spinner<>(1, 12, 1);
+    private final ListView<Layer> layerList = new ListView<>();
+    private final CheckBox layerVisible = new CheckBox("Visible");
+    private final CheckBox layerLocked = new CheckBox("Locked");
+    private final Slider layerOpacity = new Slider(0, 100, 100);
+    private boolean syncingLayerControls;
 
     private final EyedropperTool eyedropper = new EyedropperTool();
     private final FillBucketTool fillBucket = new FillBucketTool();
@@ -85,6 +92,7 @@ public final class MainWindow {
         document.setModified(true);
         commands.clear();
         resetSymmetryCenter();
+        refreshLayersPanel();
         zoom = Math.max(1, Math.min(16, 512.0 / Math.max(width, height)));
         offsetX = 80;
         offsetY = 50;
@@ -103,6 +111,7 @@ public final class MainWindow {
     ) {
         PixelImage image = document.getImage();
         PixelCanvasSession.validateChanges(image, changes);
+        ensureActiveLayerEditable();
         List<PixelCanvasSession.PixelChange> output =
                 PixelCanvasSession.symmetryChanges(image, changes, symmetry);
         List<SetPixelBatchCommand.PixelUpdate> updates = output.stream()
@@ -136,6 +145,7 @@ public final class MainWindow {
                 PixelCanvasSession.shapeChanges(
                         document.getImage(), shape, points, color, filled
                 );
+        ensureActiveLayerEditable();
         changes = PixelCanvasSession.symmetryChanges(
                 document.getImage(), changes, symmetry
         );
@@ -159,12 +169,12 @@ public final class MainWindow {
             Integer height
     ) {
         return PixelCanvasSession.inspectCanvas(
-                document.getImage(), x, y, width, height
+                document.getCompositeImage(), x, y, width, height
         );
     }
 
     public byte[] previewPngFromMcp() throws IOException {
-        return ImageExporter.toPngBytes(document.getImage());
+        return ImageExporter.toPngBytes(document.getCompositeImage());
     }
 
     public byte[] previewRegionPngFromMcp(
@@ -175,11 +185,12 @@ public final class MainWindow {
             int scale
     ) throws IOException {
         return PixelCanvasSession.previewRegionPng(
-                document.getImage(), x, y, width, height, scale
+                document.getCompositeImage(), x, y, width, height, scale
         );
     }
 
     public int fillFromMcp(int x, int y, Integer color) {
+        ensureActiveLayerEditable();
         int filled = fillBucket.fill(
                 document.getImage(), commands, x, y,
                 color == null ? currentColor : color
@@ -194,7 +205,7 @@ public final class MainWindow {
     public Path savePngFromMcp(String fileName, Path outputDirectory)
             throws IOException {
         Path saved = PixelCanvasSession.savePng(
-                document.getImage(), fileName, outputDirectory
+                document.getCompositeImage(), fileName, outputDirectory
         );
         document.setModified(false);
         return saved;
@@ -204,7 +215,7 @@ public final class MainWindow {
         root.setTop(buildMenuBar());
         root.setLeft(buildToolbar());
         root.setCenter(buildCanvasArea());
-        root.setRight(buildColorPanel());
+        root.setRight(buildRightPanel());
         root.setBottom(buildStatusBar());
         root.setPadding(new Insets(4));
     }
@@ -234,12 +245,14 @@ public final class MainWindow {
         MenuItem undo = new MenuItem("Undo");
         undo.setOnAction(e -> {
             commands.undo();
+            refreshLayersPanel();
             redraw();
         });
 
         MenuItem redo = new MenuItem("Redo");
         redo.setOnAction(e -> {
             commands.redo();
+            refreshLayersPanel();
             redraw();
         });
 
@@ -404,6 +417,177 @@ public final class MainWindow {
         return panel;
     }
 
+    private Node buildRightPanel() {
+        Tab colorTab = new Tab("Color", buildColorPanel());
+        Tab layersTab = new Tab("Layers", buildLayersPanel());
+        colorTab.setClosable(false);
+        layersTab.setClosable(false);
+        TabPane tabs = new TabPane(colorTab, layersTab);
+        tabs.setPrefWidth(230);
+        return tabs;
+    }
+
+    private Node buildLayersPanel() {
+        VBox panel = new VBox(8);
+        panel.setPadding(new Insets(10));
+
+        layerList.setCellFactory(ignored -> new ListCell<>() {
+            @Override
+            protected void updateItem(Layer layer, boolean empty) {
+                super.updateItem(layer, empty);
+                setText(empty || layer == null ? null : layer.getName());
+            }
+        });
+        layerList.getSelectionModel().selectedItemProperty().addListener(
+                (observable, oldLayer, layer) -> {
+                    if (layer != null) {
+                        document.setActiveLayer(layer);
+                        refreshLayerControls();
+                        redraw();
+                    }
+                }
+        );
+
+        Button add = new Button("Add");
+        Button duplicate = new Button("Duplicate");
+        Button delete = new Button("Delete");
+        Button rename = new Button("Rename");
+        Button moveUp = new Button("Up");
+        Button moveDown = new Button("Down");
+        add.setOnAction(event -> {
+            recordLayerChange(() ->
+                    document.addLayer("Layer " + (document.getLayers().size() + 1))
+            );
+            refreshLayersPanel();
+            redraw();
+        });
+        duplicate.setOnAction(event -> {
+            recordLayerChange(() ->
+                    document.duplicateLayer(document.getActiveLayer())
+            );
+            refreshLayersPanel();
+            redraw();
+        });
+        delete.setOnAction(event -> {
+            if (document.getLayers().size() == 1) {
+                return;
+            }
+            recordLayerChange(() ->
+                    document.deleteLayer(document.getActiveLayer())
+            );
+            refreshLayersPanel();
+            redraw();
+        });
+        rename.setOnAction(event -> renameActiveLayer());
+        moveUp.setOnAction(event -> moveActiveLayer(1));
+        moveDown.setOnAction(event -> moveActiveLayer(-1));
+
+        layerVisible.setOnAction(event -> {
+            if (!syncingLayerControls) {
+                boolean visible = layerVisible.isSelected();
+                recordLayerChange(() ->
+                        document.getActiveLayer().setVisible(visible)
+                );
+                redraw();
+            }
+        });
+        layerLocked.setOnAction(event -> {
+            if (!syncingLayerControls) {
+                boolean locked = layerLocked.isSelected();
+                recordLayerChange(() ->
+                        document.getActiveLayer().setLocked(locked)
+                );
+            }
+        });
+        layerOpacity.valueProperty().addListener(
+                (observable, oldValue, newValue) -> {
+                    if (!syncingLayerControls) {
+                        double opacity = newValue.doubleValue() / 100.0;
+                        recordLayerChange(() ->
+                                document.getActiveLayer().setOpacity(opacity)
+                        );
+                        redraw();
+                    }
+                }
+        );
+
+        layerOpacity.setShowTickMarks(true);
+        layerOpacity.setMajorTickUnit(25);
+        layerOpacity.setBlockIncrement(5);
+        HBox actions = new HBox(4, add, duplicate, delete);
+        HBox ordering = new HBox(4, rename, moveUp, moveDown);
+        panel.getChildren().addAll(
+                new Label("Layers"), layerList, actions, ordering,
+                layerVisible, layerLocked,
+                new Label("Opacity"), layerOpacity
+        );
+        VBox.setVgrow(layerList, Priority.ALWAYS);
+        refreshLayersPanel();
+        return panel;
+    }
+
+    private void renameActiveLayer() {
+        TextInputDialog dialog = new TextInputDialog(
+                document.getActiveLayer().getName()
+        );
+        dialog.setTitle("Rename Layer");
+        dialog.setHeaderText("Enter a layer name");
+        dialog.setContentText("Name:");
+        dialog.showAndWait().ifPresent(name -> {
+            if (name.isBlank()) {
+                showError("Rename failed", "Layer name cannot be blank");
+                return;
+            }
+            recordLayerChange(() ->
+                    document.getActiveLayer().setName(name)
+            );
+            refreshLayersPanel();
+        });
+    }
+
+    private void moveActiveLayer(int direction) {
+        List<Layer> layers = document.getLayers();
+        int index = layers.indexOf(document.getActiveLayer());
+        int newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= layers.size()) {
+            return;
+        }
+        Layer activeLayer = document.getActiveLayer();
+        recordLayerChange(() -> document.moveLayer(activeLayer, newIndex));
+        refreshLayersPanel();
+        redraw();
+    }
+
+    private void recordLayerChange(Runnable change) {
+        Document.StateSnapshot before = document.snapshotState();
+        change.run();
+        Document.StateSnapshot after = document.snapshotState();
+        commands.execute(new DocumentLayerStateCommand(
+                document, before, after
+        ));
+        document.setModified(true);
+    }
+
+    private void refreshLayersPanel() {
+        if (layerList.getItems() == null) {
+            return;
+        }
+        syncingLayerControls = true;
+        layerList.getItems().setAll(document.getLayers());
+        layerList.getSelectionModel().select(document.getActiveLayer());
+        refreshLayerControls();
+        syncingLayerControls = false;
+    }
+
+    private void refreshLayerControls() {
+        Layer layer = document.getActiveLayer();
+        syncingLayerControls = true;
+        layerVisible.setSelected(layer.isVisible());
+        layerLocked.setSelected(layer.isLocked());
+        layerOpacity.setValue(layer.getOpacity() * 100.0);
+        syncingLayerControls = false;
+    }
+
     private Node buildStatusBar() {
         Label status = new Label("Mirage 0.1.0");
         status.setPadding(new Insets(4, 8, 4, 8));
@@ -426,9 +610,11 @@ public final class MainWindow {
 
             if (modifier && event.getCode() == KeyCode.Z) {
                 commands.undo();
+                refreshLayersPanel();
                 redraw();
             } else if (modifier && event.getCode() == KeyCode.Y) {
                 commands.redo();
+                refreshLayersPanel();
                 redraw();
             } else if (modifier && event.getCode() == KeyCode.S) {
                 saveAs();
@@ -512,6 +698,10 @@ public final class MainWindow {
     }
 
     private void handleCanvasAction(double mouseX, double mouseY) {
+        if (!"Eyedropper".equals(activeTool)
+                && document.getActiveLayer().isLocked()) {
+            return;
+        }
         int x = (int) Math.floor((mouseX - offsetX) / zoom);
         int y = (int) Math.floor((mouseY - offsetY) / zoom);
 
@@ -539,7 +729,7 @@ public final class MainWindow {
             );
             case "Eyedropper" -> {
                 setCurrentColor(
-                        eyedropper.sample(document.getImage(), x, y)
+                        eyedropper.sample(document.getCompositeImage(), x, y)
                 );
                 changed = false;
             }
@@ -563,6 +753,9 @@ public final class MainWindow {
 
     private boolean drawSymmetricPixel(int x, int y, int color) {
         PixelImage image = document.getImage();
+        if (document.getActiveLayer().isLocked()) {
+            return false;
+        }
         int centerX = Math.min(symmetryCenterX.getValue(), image.getWidth());
         int centerY = Math.min(symmetryCenterY.getValue(), image.getHeight());
         boolean changed = false;
@@ -655,7 +848,7 @@ public final class MainWindow {
         GraphicsContext gc = canvas.getGraphicsContext2D();
         renderer.render(
                 gc,
-                document.getImage(),
+                document.getCompositeImage(),
                 zoom,
                 offsetX,
                 offsetY,
@@ -760,6 +953,7 @@ public final class MainWindow {
             document = new Document(size, size);
             commands.clear();
             resetSymmetryCenter();
+            refreshLayersPanel();
             zoom = size <= 32 ? 16 : 4;
             offsetX = 80;
             offsetY = 50;
@@ -797,6 +991,7 @@ public final class MainWindow {
             document = loaded;
             commands.clear();
             resetSymmetryCenter();
+            refreshLayersPanel();
             zoom = Math.max(
                     1,
                     Math.min(
@@ -835,7 +1030,7 @@ public final class MainWindow {
         file = withExtension(file, format);
 
         try {
-            ImageExporter.write(document.getImage(), file, format);
+            ImageExporter.write(document.getCompositeImage(), file, format);
             document.setModified(false);
 
         } catch (IOException ex) {
@@ -886,5 +1081,11 @@ public final class MainWindow {
                 message,
                 ButtonType.OK
         ).showAndWait();
+    }
+
+    private void ensureActiveLayerEditable() {
+        if (document.getActiveLayer().isLocked()) {
+            throw new IllegalStateException("The active layer is locked");
+        }
     }
 }

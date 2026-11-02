@@ -44,6 +44,8 @@ The included base implements:
 - Fill Bucket (four-connected regions; uses the selected color)
 - General-purpose symmetry for pencil and eraser strokes: vertical and
   horizontal mirrors, adjustable gridline axes, and up to 12 radial copies
+- Multiple editable layers with visibility, locking, opacity, duplicate/reorder,
+  composite rendering/export, and undoable layer management
 - Color selection
 - New document
 - PNG/JPEG/GIF open and PNG/JPEG/GIF export
@@ -248,14 +250,12 @@ Examples:
 
 ## Next development target
 
-After this starter, implement v0.2:
+The next v0.2 work is selections:
 
-1. Layers
-2. Layer visibility/locking/opacity
-3. Rectangle selection
-4. Copy/cut/paste
-5. Move selection
-6. Layer-aware undo/redo
+1. Rectangle and freeform selection
+2. Select all/deselect
+3. Copy/cut/paste
+4. Move selection
 
 See `ROADMAP.md` for the full v0.1 → v1.0 plan.
 

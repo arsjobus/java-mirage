@@ -29,12 +29,12 @@
 
 ## v0.2 — Layers and selections
 
-- [ ] Layer model
-- [ ] Layer visibility
-- [ ] Layer locking
-- [ ] Layer opacity
-- [ ] Add/delete/rename/reorder layers
-- [ ] Duplicate layer
+- [x] Layer model
+- [x] Layer visibility
+- [x] Layer locking
+- [x] Layer opacity
+- [x] Add/delete/rename/reorder layers
+- [x] Duplicate layer
 - [ ] Rectangle selection
 - [ ] Freeform selection
 - [ ] Select all/deselect
