@@ -45,7 +45,7 @@
 ## v0.3 — Transformations and project format
 
 - [x] Flip horizontal/vertical
-- [ ] Rotate 90 degrees
+- [x] Rotate 90 degrees
 - [ ] Crop
 - [ ] Resize canvas/image
 - [ ] Versioned `.mpa` project format

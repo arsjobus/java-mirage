@@ -8,9 +8,9 @@ import java.util.Arrays;
  */
 public final class PixelImage {
 
-    private final int width;
-    private final int height;
-    private final int[] pixels;
+    private int width;
+    private int height;
+    private int[] pixels;
 
     public PixelImage(int width, int height) {
         if (width <= 0 || height <= 0) {
@@ -51,6 +51,15 @@ public final class PixelImage {
 
     public PixelImage copy() {
         return new PixelImage(this);
+    }
+
+    public void replaceWith(PixelImage source) {
+        if (source == null) {
+            throw new NullPointerException("source");
+        }
+        width = source.width;
+        height = source.height;
+        pixels = source.pixels.clone();
     }
 
     private void checkBounds(int x, int y) {

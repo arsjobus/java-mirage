@@ -2,6 +2,7 @@ package com.mirage.ui;
 
 import com.mirage.commands.CommandManager;
 import com.mirage.commands.FlipDocumentCommand;
+import com.mirage.commands.RotateDocumentCommand;
 import com.mirage.commands.DocumentLayerStateCommand;
 import com.mirage.commands.DocumentSelectionCommand;
 import com.mirage.commands.SetPixelBatchCommand;
@@ -296,7 +297,20 @@ public final class MainWindow {
         flipVertical.setOnAction(e -> flipDocument(
                 FlipDocumentCommand.Direction.VERTICAL
         ));
-        transform.getItems().addAll(flipHorizontal, flipVertical);
+        MenuItem rotateClockwise =
+                new MenuItem("Rotate 90 Degrees Clockwise");
+        rotateClockwise.setOnAction(e -> rotateDocument(
+                RotateDocumentCommand.Direction.CLOCKWISE
+        ));
+        MenuItem rotateCounterclockwise =
+                new MenuItem("Rotate 90 Degrees Counterclockwise");
+        rotateCounterclockwise.setOnAction(e -> rotateDocument(
+                RotateDocumentCommand.Direction.COUNTERCLOCKWISE
+        ));
+        transform.getItems().addAll(
+                flipHorizontal, flipVertical, new SeparatorMenuItem(),
+                rotateClockwise, rotateCounterclockwise
+        );
         edit.getItems().addAll(new SeparatorMenuItem(), transform);
 
         Menu view = new Menu("View");
@@ -315,6 +329,12 @@ public final class MainWindow {
 
     private void flipDocument(FlipDocumentCommand.Direction direction) {
         commands.execute(new FlipDocumentCommand(document, direction));
+        document.setModified(true);
+        redraw();
+    }
+
+    private void rotateDocument(RotateDocumentCommand.Direction direction) {
+        commands.execute(new RotateDocumentCommand(document, direction));
         document.setModified(true);
         redraw();
     }

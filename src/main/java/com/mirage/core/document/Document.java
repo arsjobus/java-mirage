@@ -11,8 +11,8 @@ import java.util.Objects;
  */
 public final class Document {
 
-    private final int width;
-    private final int height;
+    private int width;
+    private int height;
     private final List<Layer> layers = new ArrayList<>();
     private Layer activeLayer;
     private PixelSelection selection;
@@ -76,6 +76,42 @@ public final class Document {
                     "Selection dimensions must match the document"
             );
         }
+        this.selection = selection;
+    }
+
+    public void replaceLayerImages(
+            int width,
+            int height,
+            List<PixelImage> images,
+            PixelSelection selection
+    ) {
+        Objects.requireNonNull(images, "images");
+        if (width <= 0 || height <= 0 || images.size() != layers.size()) {
+            throw new IllegalArgumentException(
+                    "Image dimensions and layer count must match the document"
+            );
+        }
+        for (PixelImage image : images) {
+            Objects.requireNonNull(image, "image");
+            if (image.getWidth() != width || image.getHeight() != height) {
+                throw new IllegalArgumentException(
+                        "Layer image dimensions must match the new document size"
+                );
+            }
+        }
+        if (selection != null
+                && (selection.getWidth() != width
+                || selection.getHeight() != height)) {
+            throw new IllegalArgumentException(
+                    "Selection dimensions must match the new document size"
+            );
+        }
+
+        for (int index = 0; index < layers.size(); index++) {
+            layers.get(index).getImage().replaceWith(images.get(index));
+        }
+        this.width = width;
+        this.height = height;
         this.selection = selection;
     }
 
