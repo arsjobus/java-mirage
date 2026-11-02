@@ -326,7 +326,25 @@ public final class MainWindow {
         StackPane pane = new StackPane(canvas);
         pane.setAlignment(Pos.TOP_LEFT);
         pane.setStyle("-fx-background-color: #262626;");
+        pane.widthProperty().addListener(
+                (observable, oldWidth, newWidth) ->
+                        resizeCanvas(newWidth.doubleValue(), pane.getHeight())
+        );
+        pane.heightProperty().addListener(
+                (observable, oldHeight, newHeight) ->
+                        resizeCanvas(pane.getWidth(), newHeight.doubleValue())
+        );
         return pane;
+    }
+
+    private void resizeCanvas(double width, double height) {
+        if (canvas.getWidth() != width) {
+            canvas.setWidth(width);
+        }
+        if (canvas.getHeight() != height) {
+            canvas.setHeight(height);
+        }
+        redraw();
     }
 
     private Node buildColorPanel() {
