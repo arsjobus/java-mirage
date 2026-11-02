@@ -15,6 +15,7 @@ public final class Document {
     private final int height;
     private final List<Layer> layers = new ArrayList<>();
     private Layer activeLayer;
+    private PixelSelection selection;
     private boolean modified;
 
     public Document(int width, int height) {
@@ -36,6 +37,14 @@ public final class Document {
         return activeLayer.getImage();
     }
 
+    public int getWidth() {
+        return width;
+    }
+
+    public int getHeight() {
+        return height;
+    }
+
     public PixelImage getCompositeImage() {
         PixelImage composite = new PixelImage(width, height);
         for (Layer layer : layers) {
@@ -53,6 +62,21 @@ public final class Document {
 
     public Layer getActiveLayer() {
         return activeLayer;
+    }
+
+    public PixelSelection getSelection() {
+        return selection;
+    }
+
+    public void setSelection(PixelSelection selection) {
+        if (selection != null
+                && (selection.getWidth() != width
+                || selection.getHeight() != height)) {
+            throw new IllegalArgumentException(
+                    "Selection dimensions must match the document"
+            );
+        }
+        this.selection = selection;
     }
 
     public void setActiveLayer(Layer layer) {

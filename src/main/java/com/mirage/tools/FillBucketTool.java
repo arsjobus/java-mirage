@@ -2,6 +2,7 @@ package com.mirage.tools;
 
 import com.mirage.commands.CommandManager;
 import com.mirage.commands.SetPixelBatchCommand;
+import com.mirage.core.document.PixelSelection;
 import com.mirage.core.image.PixelImage;
 
 import java.util.ArrayList;
@@ -21,10 +22,24 @@ public final class FillBucketTool implements Tool {
             int y,
             int color
     ) {
+        return fill(image, commands, x, y, color, null);
+    }
+
+    public int fill(
+            PixelImage image,
+            CommandManager commands,
+            int x,
+            int y,
+            int color,
+            PixelSelection selection
+    ) {
         if (x < 0 || y < 0 || x >= image.getWidth() || y >= image.getHeight()) {
             throw new IllegalArgumentException(
                     "Fill start is outside canvas: (" + x + ", " + y + ")"
             );
+        }
+        if (selection != null && !selection.contains(x, y)) {
+            return 0;
         }
 
         int targetColor = image.getPixel(x, y);
@@ -53,24 +68,26 @@ public final class FillBucketTool implements Tool {
 
             if (pixelX > 0) {
                 queueEnd = enqueueIfMatching(
-                        image, index - 1, targetColor, visited, queue, queueEnd
+                        image, index - 1, targetColor, selection,
+                        visited, queue, queueEnd
                 );
             }
             if (pixelX + 1 < width) {
                 queueEnd = enqueueIfMatching(
-                        image, index + 1, targetColor, visited, queue, queueEnd
+                        image, index + 1, targetColor, selection,
+                        visited, queue, queueEnd
                 );
             }
             if (pixelY > 0) {
                 queueEnd = enqueueIfMatching(
                         image, index - width, targetColor,
-                        visited, queue, queueEnd
+                        selection, visited, queue, queueEnd
                 );
             }
             if (pixelY + 1 < height) {
                 queueEnd = enqueueIfMatching(
                         image, index + width, targetColor,
-                        visited, queue, queueEnd
+                        selection, visited, queue, queueEnd
                 );
             }
         }
@@ -83,11 +100,15 @@ public final class FillBucketTool implements Tool {
             PixelImage image,
             int index,
             int targetColor,
+            PixelSelection selection,
             boolean[] visited,
             int[] queue,
             int queueEnd
     ) {
         if (!visited[index]
+                && (selection == null || selection.contains(
+                    index % image.getWidth(), index / image.getWidth()
+                ))
                 && image.getPixel(index % image.getWidth(),
                 index / image.getWidth()) == targetColor) {
             visited[index] = true;

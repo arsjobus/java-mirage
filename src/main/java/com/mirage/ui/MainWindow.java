@@ -2,9 +2,11 @@ package com.mirage.ui;
 
 import com.mirage.commands.CommandManager;
 import com.mirage.commands.DocumentLayerStateCommand;
+import com.mirage.commands.DocumentSelectionCommand;
 import com.mirage.commands.SetPixelBatchCommand;
 import com.mirage.core.document.Document;
 import com.mirage.core.document.Layer;
+import com.mirage.core.document.PixelSelection;
 import com.mirage.core.image.PixelColor;
 import com.mirage.core.image.PixelImage;
 import com.mirage.io.ImageExporter;
@@ -74,6 +76,17 @@ public final class MainWindow {
     private double originalOffsetX, originalOffsetY;
     private Map<SymmetryTransform.Point, StrokePixel> activeStroke;
     private int strokeColor;
+    private PixelSelection previewSelection;
+    private boolean creatingSelection;
+    private boolean movingSelection;
+    private int selectionStartX;
+    private int selectionStartY;
+    private int moveStartX;
+    private int moveStartY;
+    private int moveDeltaX;
+    private int moveDeltaY;
+    private List<PixelSelection.Point> lassoPoints = new ArrayList<>();
+    private Clipboard clipboard;
 
     public MainWindow() {
         buildUi();
@@ -256,7 +269,22 @@ public final class MainWindow {
             redraw();
         });
 
-        edit.getItems().addAll(undo, redo);
+        MenuItem selectAll = new MenuItem("Select All");
+        selectAll.setOnAction(e -> selectAll());
+        MenuItem deselect = new MenuItem("Deselect");
+        deselect.setOnAction(e -> deselect());
+        MenuItem copy = new MenuItem("Copy");
+        copy.setOnAction(e -> copySelection());
+        MenuItem cut = new MenuItem("Cut");
+        cut.setOnAction(e -> cutSelection());
+        MenuItem paste = new MenuItem("Paste");
+        paste.setOnAction(e -> pasteSelection());
+
+        edit.getItems().addAll(
+                undo, redo, new SeparatorMenuItem(),
+                selectAll, deselect, new SeparatorMenuItem(),
+                copy, cut, paste
+        );
 
         Menu view = new Menu("View");
         CheckMenuItem grid = new CheckMenuItem("Grid");
@@ -313,6 +341,8 @@ public final class MainWindow {
         fillBucketButton.setTooltip(
                 new Tooltip("Fill the connected area with the selected color")
         );
+        ToggleButton rectangleSelectButton = toolButton("Rectangle Select");
+        ToggleButton freeformSelectButton = toolButton("Freeform Select");
 
         pencilButton.setSelected(true);
 
@@ -321,7 +351,9 @@ public final class MainWindow {
                 pencilButton,
                 eraserButton,
                 eyedropperButton,
-                fillBucketButton
+                fillBucketButton,
+                rectangleSelectButton,
+                freeformSelectButton
         );
 
         return box;
@@ -604,11 +636,28 @@ public final class MainWindow {
                 selectTool("Eyedropper");
             } else if (event.getCode() == KeyCode.F) {
                 selectTool(fillBucket.getName());
+            } else if (event.getCode() == KeyCode.M) {
+                selectTool("Rectangle Select");
+            } else if (event.getCode() == KeyCode.L) {
+                selectTool("Freeform Select");
             }
 
             boolean modifier = event.isControlDown() || event.isMetaDown();
 
-            if (modifier && event.getCode() == KeyCode.Z) {
+            if (modifier && event.getCode() == KeyCode.A) {
+                selectAll();
+            } else if (modifier && event.getCode() == KeyCode.C) {
+                copySelection();
+            } else if (modifier && event.getCode() == KeyCode.X) {
+                cutSelection();
+            } else if (modifier && event.getCode() == KeyCode.V) {
+                pasteSelection();
+            } else if (event.getCode() == KeyCode.ESCAPE) {
+                deselect();
+            } else if (event.getCode() == KeyCode.DELETE
+                    || event.getCode() == KeyCode.BACK_SPACE) {
+                clearSelection();
+            } else if (modifier && event.getCode() == KeyCode.Z) {
                 commands.undo();
                 refreshLayersPanel();
                 redraw();
@@ -649,7 +698,33 @@ public final class MainWindow {
             }
 
             if (event.getButton() == MouseButton.PRIMARY) {
-                if ("Pencil".equals(activeTool)) {
+                PixelSelection.Point point = canvasPoint(event.getX(), event.getY());
+                if (isSelectionTool() && point != null
+                        && document.getSelection() != null
+                        && document.getSelection().contains(
+                            point.x(), point.y()
+                        )) {
+                    movingSelection = true;
+                    moveStartX = point.x();
+                    moveStartY = point.y();
+                    moveDeltaX = 0;
+                    moveDeltaY = 0;
+                    previewSelection = document.getSelection();
+                } else if (isSelectionTool() && point != null) {
+                    creatingSelection = true;
+                    selectionStartX = point.x();
+                    selectionStartY = point.y();
+                    lassoPoints.clear();
+                    if ("Freeform Select".equals(activeTool)) {
+                        lassoPoints.add(point);
+                    } else {
+                        previewSelection = PixelSelection.rectangle(
+                                document.getWidth(), document.getHeight(),
+                                point.x(), point.y(), point.x(), point.y()
+                        );
+                    }
+                    redraw();
+                } else if ("Pencil".equals(activeTool)) {
                     activeStroke = new LinkedHashMap<>();
                     strokeColor = currentColor;
                 } else if ("Eraser".equals(activeTool)) {
@@ -662,7 +737,13 @@ public final class MainWindow {
 
         canvas.setOnMouseReleased(event -> {
             if (event.getButton() == MouseButton.PRIMARY) {
-                finishStroke();
+                if (creatingSelection) {
+                    finishSelection();
+                } else if (movingSelection) {
+                    finishSelectionMove();
+                } else {
+                    finishStroke();
+                }
             }
         });
 
@@ -672,7 +753,29 @@ public final class MainWindow {
                 offsetY = originalOffsetY + event.getY() - panStartY;
                 redraw();
             } else if (event.isPrimaryButtonDown()) {
-                if (!fillBucket.getName().equals(activeTool)) {
+                PixelSelection.Point point = canvasPoint(
+                        event.getX(), event.getY()
+                );
+                if (creatingSelection && point != null) {
+                    if ("Rectangle Select".equals(activeTool)) {
+                        previewSelection = PixelSelection.rectangle(
+                                document.getWidth(), document.getHeight(),
+                                selectionStartX, selectionStartY,
+                                point.x(), point.y()
+                        );
+                    } else if (lassoPoints.isEmpty()
+                            || !lassoPoints.getLast().equals(point)) {
+                        lassoPoints.add(point);
+                    }
+                    redraw();
+                } else if (movingSelection && point != null) {
+                    moveDeltaX = point.x() - moveStartX;
+                    moveDeltaY = point.y() - moveStartY;
+                    previewSelection = document.getSelection().translated(
+                            moveDeltaX, moveDeltaY
+                    );
+                    redraw();
+                } else if (!fillBucket.getName().equals(activeTool)) {
                     handleCanvasAction(event.getX(), event.getY());
                 }
             }
@@ -695,6 +798,231 @@ public final class MainWindow {
                 redraw();
             }
         });
+    }
+
+    private boolean isSelectionTool() {
+        return "Rectangle Select".equals(activeTool)
+                || "Freeform Select".equals(activeTool);
+    }
+
+    private PixelSelection.Point canvasPoint(double mouseX, double mouseY) {
+        int x = (int) Math.floor((mouseX - offsetX) / zoom);
+        int y = (int) Math.floor((mouseY - offsetY) / zoom);
+        if (x < 0 || y < 0 || x >= document.getWidth()
+                || y >= document.getHeight()) {
+            return null;
+        }
+        return new PixelSelection.Point(x, y);
+    }
+
+    private void finishSelection() {
+        PixelSelection selection = "Rectangle Select".equals(activeTool)
+                ? previewSelection
+                : PixelSelection.polygon(
+                    document.getWidth(), document.getHeight(), lassoPoints
+                );
+        creatingSelection = false;
+        previewSelection = null;
+        lassoPoints.clear();
+        if (selection != null && selection.bounds().isEmpty()) {
+            selection = null;
+        }
+        if (selection != null) {
+            commands.execute(new DocumentSelectionCommand(
+                    document, document.getImage(), selection, List.of()
+            ));
+        }
+        redraw();
+    }
+
+    private void finishSelectionMove() {
+        PixelSelection before = document.getSelection();
+        PixelSelection after = previewSelection;
+        int dx = moveDeltaX;
+        int dy = moveDeltaY;
+        movingSelection = false;
+        previewSelection = null;
+        if ((dx == 0 && dy == 0) || document.getActiveLayer().isLocked()) {
+            redraw();
+            return;
+        }
+
+        PixelImage image = document.getImage();
+        Map<SymmetryTransform.Point, Integer> movedPixels =
+                new LinkedHashMap<>();
+        for (int y = 0; y < document.getHeight(); y++) {
+            for (int x = 0; x < document.getWidth(); x++) {
+                if (before.contains(x, y)) {
+                    movedPixels.put(
+                            new SymmetryTransform.Point(x, y),
+                            PixelColor.TRANSPARENT
+                    );
+                }
+            }
+        }
+        for (int y = 0; y < document.getHeight(); y++) {
+            for (int x = 0; x < document.getWidth(); x++) {
+                if (after.contains(x, y)) {
+                    movedPixels.put(
+                            new SymmetryTransform.Point(x, y),
+                            image.getPixel(x - dx, y - dy)
+                    );
+                }
+            }
+        }
+        List<SetPixelBatchCommand.PixelUpdate> updates =
+                movedPixels.entrySet().stream()
+                        .map(entry -> new SetPixelBatchCommand.PixelUpdate(
+                                entry.getKey().x(), entry.getKey().y(),
+                                entry.getValue()
+                        ))
+                        .toList();
+        commands.execute(new DocumentSelectionCommand(
+                document, image, after, updates
+        ));
+        document.setModified(true);
+        redraw();
+    }
+
+    private void selectAll() {
+        PixelSelection selection = PixelSelection.all(
+                document.getWidth(), document.getHeight()
+        );
+        commands.execute(new DocumentSelectionCommand(
+                document, document.getImage(), selection, List.of()
+        ));
+        redraw();
+    }
+
+    private void deselect() {
+        if (document.getSelection() == null) {
+            return;
+        }
+        commands.execute(new DocumentSelectionCommand(
+                document, document.getImage(), null, List.of()
+        ));
+        redraw();
+    }
+
+    private void copySelection() {
+        PixelSelection selection = document.getSelection();
+        if (selection == null) {
+            return;
+        }
+        selection.bounds().ifPresent(bounds -> {
+            PixelImage copied = new PixelImage(bounds.width(), bounds.height());
+            boolean[] mask = new boolean[bounds.width() * bounds.height()];
+            PixelImage source = document.getImage();
+            for (int y = 0; y < bounds.height(); y++) {
+                for (int x = 0; x < bounds.width(); x++) {
+                    int sourceX = bounds.x() + x;
+                    int sourceY = bounds.y() + y;
+                    if (selection.contains(sourceX, sourceY)) {
+                        mask[y * bounds.width() + x] = true;
+                        copied.setPixel(
+                                x, y, source.getPixel(sourceX, sourceY)
+                        );
+                    }
+                }
+            }
+            clipboard = new Clipboard(
+                    copied,
+                    PixelSelection.fromMask(
+                            bounds.width(), bounds.height(), mask
+                    ),
+                    bounds.x(), bounds.y()
+            );
+        });
+    }
+
+    private void cutSelection() {
+        PixelSelection selection = document.getSelection();
+        if (selection == null || document.getActiveLayer().isLocked()) {
+            return;
+        }
+        copySelection();
+        List<SetPixelBatchCommand.PixelUpdate> updates =
+                selectedPixelUpdates(selection, PixelColor.TRANSPARENT);
+        if (!updates.isEmpty()) {
+            commands.execute(new DocumentSelectionCommand(
+                    document, document.getImage(), selection, updates
+            ));
+            document.setModified(true);
+            redraw();
+        }
+    }
+
+    private void clearSelection() {
+        PixelSelection selection = document.getSelection();
+        if (selection == null || document.getActiveLayer().isLocked()) {
+            return;
+        }
+        List<SetPixelBatchCommand.PixelUpdate> updates =
+                selectedPixelUpdates(selection, PixelColor.TRANSPARENT);
+        if (!updates.isEmpty()) {
+            commands.execute(new DocumentSelectionCommand(
+                    document, document.getImage(), selection, updates
+            ));
+            document.setModified(true);
+            redraw();
+        }
+    }
+
+    private List<SetPixelBatchCommand.PixelUpdate> selectedPixelUpdates(
+            PixelSelection selection, int color
+    ) {
+        PixelImage image = document.getImage();
+        List<SetPixelBatchCommand.PixelUpdate> updates = new ArrayList<>();
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                if (selection.contains(x, y)
+                        && image.getPixel(x, y) != color) {
+                    updates.add(new SetPixelBatchCommand.PixelUpdate(
+                            x, y, color
+                    ));
+                }
+            }
+        }
+        return updates;
+    }
+
+    private void pasteSelection() {
+        if (clipboard == null || document.getActiveLayer().isLocked()) {
+            return;
+        }
+        PixelImage destination = document.getImage();
+        PixelImage source = clipboard.image();
+        int x = Math.max(0, Math.min(
+                clipboard.x() + 1, destination.getWidth() - source.getWidth()
+        ));
+        int y = Math.max(0, Math.min(
+                clipboard.y() + 1, destination.getHeight() - source.getHeight()
+        ));
+        boolean[] mask = new boolean[
+                destination.getWidth() * destination.getHeight()
+        ];
+        List<SetPixelBatchCommand.PixelUpdate> updates = new ArrayList<>();
+        for (int sourceY = 0; sourceY < source.getHeight(); sourceY++) {
+            for (int sourceX = 0; sourceX < source.getWidth(); sourceX++) {
+                if (!clipboard.selection().contains(sourceX, sourceY)) {
+                    continue;
+                }
+                int targetX = x + sourceX;
+                int targetY = y + sourceY;
+                mask[targetY * destination.getWidth() + targetX] = true;
+                updates.add(new SetPixelBatchCommand.PixelUpdate(
+                        targetX, targetY, source.getPixel(sourceX, sourceY)
+                ));
+            }
+        }
+        PixelSelection pastedSelection = PixelSelection.fromMask(
+                destination.getWidth(), destination.getHeight(), mask
+        );
+        commands.execute(new DocumentSelectionCommand(
+                document, destination, pastedSelection, updates
+        ));
+        document.setModified(true);
+        redraw();
     }
 
     private void handleCanvasAction(double mouseX, double mouseY) {
@@ -735,7 +1063,8 @@ public final class MainWindow {
             }
             case "Fill Bucket" -> {
                 changed = fillBucket.fill(
-                        document.getImage(), commands, x, y, currentColor
+                        document.getImage(), commands, x, y, currentColor,
+                        document.getSelection()
                 ) > 0;
             }
             default -> {
@@ -768,8 +1097,13 @@ public final class MainWindow {
                         centerX, centerY, radialCopies.getValue()
                 )
         );
+        PixelSelection selection = document.getSelection();
         if (activeStroke != null) {
             for (SymmetryTransform.Point point : points) {
+                if (selection != null
+                        && !selection.contains(point.x(), point.y())) {
+                    continue;
+                }
                 int previousColor = image.getPixel(point.x(), point.y());
                 if (previousColor == color) {
                     continue;
@@ -789,6 +1123,8 @@ public final class MainWindow {
         }
 
         List<SetPixelBatchCommand.PixelUpdate> updates = points.stream()
+                .filter(point -> selection == null
+                        || selection.contains(point.x(), point.y()))
                 .filter(point -> image.getPixel(point.x(), point.y()) != color)
                 .map(point -> new SetPixelBatchCommand.PixelUpdate(
                         point.x(), point.y(), color
@@ -834,6 +1170,14 @@ public final class MainWindow {
     private record StrokePixel(int oldColor, int newColor) {
     }
 
+    private record Clipboard(
+            PixelImage image,
+            PixelSelection selection,
+            int x,
+            int y
+    ) {
+    }
+
     private void setCurrentColor(int color) {
         currentColor = color;
         colorPicker.setValue(Color.rgb(
@@ -857,6 +1201,80 @@ public final class MainWindow {
                 gridCellHeight
         );
         drawSymmetryGuides(gc);
+        drawSelection(gc);
+    }
+
+    private void drawSelection(GraphicsContext gc) {
+        PixelSelection visibleSelection = previewSelection == null
+                ? document.getSelection()
+                : previewSelection;
+        if (visibleSelection != null) {
+            gc.save();
+            gc.setLineWidth(Math.max(1, zoom * 0.08));
+            gc.setLineDashes(4, 4);
+            gc.setStroke(Color.WHITE);
+            drawSelectionEdges(gc, visibleSelection);
+            gc.setLineDashOffset(4);
+            gc.setStroke(Color.BLACK);
+            drawSelectionEdges(gc, visibleSelection);
+            gc.restore();
+        }
+
+        if (creatingSelection && "Freeform Select".equals(activeTool)
+                && lassoPoints.size() > 1) {
+            gc.save();
+            gc.setLineWidth(Math.max(1, zoom * 0.08));
+            gc.setLineDashes(4, 4);
+            gc.setStroke(Color.WHITE);
+            gc.beginPath();
+            gc.moveTo(
+                    offsetX + (lassoPoints.getFirst().x() + 0.5) * zoom,
+                    offsetY + (lassoPoints.getFirst().y() + 0.5) * zoom
+            );
+            for (int index = 1; index < lassoPoints.size(); index++) {
+                PixelSelection.Point point = lassoPoints.get(index);
+                gc.lineTo(
+                        offsetX + (point.x() + 0.5) * zoom,
+                        offsetY + (point.y() + 0.5) * zoom
+                );
+            }
+            gc.stroke();
+            gc.restore();
+        }
+    }
+
+    private void drawSelectionEdges(
+            GraphicsContext gc, PixelSelection selection
+    ) {
+        gc.beginPath();
+        for (int y = 0; y < selection.getHeight(); y++) {
+            for (int x = 0; x < selection.getWidth(); x++) {
+                if (!selection.contains(x, y)) {
+                    continue;
+                }
+                double left = offsetX + x * zoom;
+                double top = offsetY + y * zoom;
+                double right = left + zoom;
+                double bottom = top + zoom;
+                if (!selection.contains(x, y - 1)) {
+                    gc.moveTo(left, top);
+                    gc.lineTo(right, top);
+                }
+                if (!selection.contains(x + 1, y)) {
+                    gc.moveTo(right, top);
+                    gc.lineTo(right, bottom);
+                }
+                if (!selection.contains(x, y + 1)) {
+                    gc.moveTo(right, bottom);
+                    gc.lineTo(left, bottom);
+                }
+                if (!selection.contains(x - 1, y)) {
+                    gc.moveTo(left, bottom);
+                    gc.lineTo(left, top);
+                }
+            }
+        }
+        gc.stroke();
     }
 
     private void drawSymmetryGuides(GraphicsContext gc) {

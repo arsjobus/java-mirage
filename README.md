@@ -46,6 +46,8 @@ The included base implements:
   horizontal mirrors, adjustable gridline axes, and up to 12 radial copies
 - Multiple editable layers with visibility, locking, opacity, duplicate/reorder,
   composite rendering/export, and undoable layer management
+- Rectangular and freeform selections, select all/deselect, selection-aware
+  drawing/fill, copy/cut/paste, move, and undo/redo
 - Color selection
 - New document
 - PNG/JPEG/GIF open and PNG/JPEG/GIF export
@@ -161,6 +163,13 @@ git push origin v0.1.0
 - `E` — Eraser
 - `I` — Eyedropper
 - `F` — Fill Bucket
+- `M` — Rectangle Select
+- `L` — Freeform Select
+- `Ctrl/Cmd + A` — Select all
+- `Ctrl/Cmd + C/X/V` — Copy, cut, paste selection
+- `Delete` — Clear selected pixels
+- `Escape` — Deselect
+- Drag inside a selection with either selection tool to move its pixels
 - Symmetry controls in the Color panel — mirror across either axis, position
   the symmetry axes, and set radial copies (1 disables radial symmetry)
 - Click or drag on the canvas with the Eyedropper to sample a pixel into the color picker

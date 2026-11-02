@@ -35,12 +35,12 @@
 - [x] Layer opacity
 - [x] Add/delete/rename/reorder layers
 - [x] Duplicate layer
-- [ ] Rectangle selection
-- [ ] Freeform selection
-- [ ] Select all/deselect
-- [ ] Copy/cut/paste
-- [ ] Move selection
-- [ ] Selection undo/redo
+- [x] Rectangle selection
+- [x] Freeform selection
+- [x] Select all/deselect
+- [x] Copy/cut/paste
+- [x] Move selection
+- [x] Selection undo/redo
 
 ## v0.3 — Transformations and project format
 

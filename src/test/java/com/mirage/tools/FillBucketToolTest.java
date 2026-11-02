@@ -1,6 +1,7 @@
 package com.mirage.tools;
 
 import com.mirage.commands.CommandManager;
+import com.mirage.core.document.PixelSelection;
 import com.mirage.core.image.PixelImage;
 import org.junit.jupiter.api.Test;
 
@@ -62,5 +63,23 @@ class FillBucketToolTest {
                         image, new CommandManager(), 2, 0, 0xFFFF0000
                 )
         );
+    }
+
+    @Test
+    void limitsFillToTheSelectedMask() {
+        PixelImage image = new PixelImage(4, 1);
+        PixelSelection selection =
+                PixelSelection.rectangle(4, 1, 1, 0, 2, 0);
+        CommandManager commands = new CommandManager();
+
+        int filled = new FillBucketTool().fill(
+                image, commands, 1, 0, 0xFFFF0000, selection
+        );
+
+        assertEquals(2, filled);
+        assertEquals(0, image.getPixel(0, 0));
+        assertEquals(0xFFFF0000, image.getPixel(1, 0));
+        assertEquals(0xFFFF0000, image.getPixel(2, 0));
+        assertEquals(0, image.getPixel(3, 0));
     }
 }
