@@ -1,11 +1,13 @@
 package com.mirage.ui;
 
 import com.mirage.commands.CommandManager;
+import com.mirage.commands.CanvasSizeDocumentCommand;
 import com.mirage.commands.CropDocumentCommand;
-import com.mirage.commands.FlipDocumentCommand;
-import com.mirage.commands.RotateDocumentCommand;
 import com.mirage.commands.DocumentLayerStateCommand;
 import com.mirage.commands.DocumentSelectionCommand;
+import com.mirage.commands.FlipDocumentCommand;
+import com.mirage.commands.RotateDocumentCommand;
+import com.mirage.commands.ResizeImageDocumentCommand;
 import com.mirage.commands.SetPixelBatchCommand;
 import com.mirage.core.document.Document;
 import com.mirage.core.document.Layer;
@@ -311,10 +313,15 @@ public final class MainWindow {
         ));
         cropToSelectionItem = new MenuItem("Crop to Selection Bounds");
         cropToSelectionItem.setOnAction(e -> cropToSelection());
+        MenuItem canvasSize = new MenuItem("Canvas Size...");
+        canvasSize.setOnAction(e -> showTransformDialog(true));
+        MenuItem resizeImage = new MenuItem("Resize Image...");
+        resizeImage.setOnAction(e -> showTransformDialog(false));
         transform.getItems().addAll(
                 flipHorizontal, flipVertical, new SeparatorMenuItem(),
                 rotateClockwise, rotateCounterclockwise,
-                new SeparatorMenuItem(), cropToSelectionItem
+                new SeparatorMenuItem(), cropToSelectionItem,
+                new SeparatorMenuItem(), canvasSize, resizeImage
         );
         edit.getItems().addAll(new SeparatorMenuItem(), transform);
 
@@ -358,6 +365,74 @@ public final class MainWindow {
         offsetX += bounds.x() * zoom;
         offsetY += bounds.y() * zoom;
         redraw();
+    }
+
+    private void showTransformDialog(boolean resizeCanvas) {
+        TextField width = new TextField(
+                Integer.toString(document.getWidth())
+        );
+        TextField height = new TextField(
+                Integer.toString(document.getHeight())
+        );
+        width.setPrefColumnCount(8);
+        height.setPrefColumnCount(8);
+
+        GridPane content = new GridPane();
+        content.setHgap(8);
+        content.setVgap(8);
+        content.setPadding(new Insets(10));
+        content.addRow(0, new Label("Width"), width);
+        content.addRow(1, new Label("Height"), height);
+
+        ComboBox<CanvasSizeDocumentCommand.Anchor> anchor = new ComboBox<>();
+        anchor.getItems().setAll(CanvasSizeDocumentCommand.Anchor.values());
+        anchor.setValue(CanvasSizeDocumentCommand.Anchor.CENTER);
+        if (resizeCanvas) {
+            content.addRow(2, new Label("Anchor"), anchor);
+        } else {
+            content.add(new Label("Sampling"), 0, 2);
+            content.add(new Label("Nearest neighbor"), 1, 2);
+        }
+
+        ButtonType apply = new ButtonType(
+                resizeCanvas ? "Apply" : "Resize",
+                ButtonBar.ButtonData.OK_DONE
+        );
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(resizeCanvas ? "Canvas Size" : "Resize Image");
+        dialog.setHeaderText(resizeCanvas
+                ? "Change canvas bounds without scaling artwork"
+                : "Scale every layer using nearest-neighbor sampling");
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().addAll(
+                apply, ButtonType.CANCEL
+        );
+
+        dialog.showAndWait().filter(apply::equals).ifPresent(result -> {
+            try {
+                int newWidth = Integer.parseInt(width.getText().trim());
+                int newHeight = Integer.parseInt(height.getText().trim());
+                if (resizeCanvas) {
+                    commands.execute(new CanvasSizeDocumentCommand(
+                            document, newWidth, newHeight,
+                            anchor.getValue()
+                    ));
+                } else {
+                    commands.execute(new ResizeImageDocumentCommand(
+                            document, newWidth, newHeight
+                    ));
+                }
+                document.setModified(true);
+                redraw();
+            } catch (IllegalArgumentException ex) {
+                showError(
+                        resizeCanvas ? "Canvas Size failed" : "Resize failed",
+                        ex.getMessage() == null
+                                ? "Width and height must be positive integers"
+                                : ex.getMessage()
+                );
+            }
+        });
     }
 
     private void showGridSettings() {

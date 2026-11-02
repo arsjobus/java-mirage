@@ -46,33 +46,37 @@
 
 ### Transformations
 
-- [x] Flip the whole document horizontally/vertically
-- [x] Rotate the whole document 90 degrees clockwise/counterclockwise
-- [x] Crop the whole document to the selection bounds
-- [ ] Resize canvas without scaling artwork
-  - [ ] Set width/height and choose an anchor
-  - [ ] Keep existing pixels in place relative to the anchor; expose transparent pixels
-- [ ] Resize image, scaling artwork with nearest-neighbor sampling
-- [ ] Preserve layer order/properties and transform the selection with every operation
-- [ ] Make each operation one undoable command; verify undo/redo restores pixels, dimensions, and selection
+- [x] Flip every layer and the selection horizontally/vertically
+- [x] Rotate every layer and the selection 90 degrees clockwise/counterclockwise
+- [x] Crop every layer and the selection to the selection bounds
+- [x] Add **Canvas Size**: set positive width/height and choose one of nine anchors (center by default)
+- [x] Keep artwork at the same anchor-relative position when changing canvas size; clip pixels outside smaller bounds and leave newly exposed pixels transparent
+- [x] Add **Resize Image**: set positive width/height and scale every layer with nearest-neighbor sampling
+- [x] Use the same pixel-coordinate mapping for layer pixels and the selection mask when scaling; specify edge cases in tests
+- [x] Preserve layer order, names, visibility, lock state, opacity, and active layer through every transformation
+- [x] Make each operation a single undoable command; undo/redo restores exact pixels, dimensions, and selection
+- [x] Test transforms on multiple layers, including hidden/locked/partially transparent layers, and on selections at canvas edges
 
-All document-wide transformations apply consistently to every layer. The initial resize implementation is nearest-neighbor only; other resampling modes are out of scope for pixel art.
+Canvas Size changes the document bounds without scaling artwork. Resize Image scales artwork to the requested dimensions. Both apply to the entire document; additional resampling modes are out of scope for pixel art.
 
 ### Native project format
 
-- [ ] Specify and document `.mpa` format version 1 before implementation
-- [ ] Store the project as a ZIP container with a JSON manifest and lossless RGBA layer images
-- [ ] Save/load canvas dimensions, layer pixel data, order, names, visibility, lock state, opacity, and active layer
-- [ ] Record format version and application version; reject unsupported major versions with a useful error
-- [ ] Validate the complete archive and manifest before replacing the open document
-- [ ] Save atomically so an interrupted save does not corrupt the previous project
-- [ ] Round-trip test transparent pixels, multiple layers, metadata, and malformed/unsupported files
+- [ ] Write the `.mpa` version 1 specification before implementing save/load
+- [ ] Define a ZIP layout with one UTF-8 JSON manifest and one lossless RGBA PNG per layer; keep layer pixels separate rather than flattening
+- [ ] Specify manifest fields for format/application versions, canvas dimensions, ordered layer entries, layer names and properties, and active-layer identity
+- [ ] Define required versus optional fields, defaults for optional fields, and compatibility rules for unknown fields
+- [ ] Save and load the complete editable document: dimensions, pixel data, layer order/properties, and active layer
+- [ ] Keep selection and undo/redo history transient; do not serialize Java objects
+- [ ] Validate the full archive, manifest, layer references, dimensions, and decoded images before changing the open document
+- [ ] Reject unsupported major format versions and invalid or resource-excessive inputs with a useful error
+- [ ] Save through a temporary file and replace the destination only after a successful write, preserving an existing project if saving fails
+- [ ] Round-trip test transparent pixels, multiple layers, metadata, and active layer; test malformed archives, missing/duplicate entries, invalid dimensions, and unsupported versions
 
-Version 1 is for editable still-image documents. Selection and undo history are transient and are not saved. Keep the manifest extensible for future frames, palettes, and tiles; do not serialize Java objects or make future fields mandatory for version 1 readers.
+Version 1 targets editable still-image documents. Keep the manifest extensible for future frames, palettes, and tiles without making those future fields mandatory for version 1 readers.
 
 ### Recovery
 
-- [ ] Add autosave only after native save/load is reliable
+- [ ] Add autosave only after native save/load and atomic-save behavior are reliable
 - [ ] Offer crash recovery without overwriting the last explicitly saved project
 - [ ] Clear recovered state after a successful explicit save or user dismissal
 

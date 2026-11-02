@@ -48,6 +48,10 @@ class PixelImageTest {
                 IllegalArgumentException.class,
                 () -> new PixelImage(4, 0)
         );
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new PixelImage(Integer.MAX_VALUE, 2)
+        );
     }
 
     @Test

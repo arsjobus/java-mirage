@@ -13,8 +13,11 @@ public final class PixelImage {
     private int[] pixels;
 
     public PixelImage(int width, int height) {
-        if (width <= 0 || height <= 0) {
-            throw new IllegalArgumentException("Image dimensions must be positive");
+        if (width <= 0 || height <= 0
+                || (long) width * height > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(
+                    "Image dimensions must be positive and fit in a pixel buffer"
+            );
         }
 
         this.width = width;
