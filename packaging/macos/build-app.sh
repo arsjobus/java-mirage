@@ -54,6 +54,9 @@ if [ -z "$(find target/fx -name 'javafx-*.jar' -print -quit)" ]; then
 fi
 rm -f target/dist/javafx-*.jar
 
+# Generate native icon files from the same built-in artwork used by the app window.
+java -Djava.awt.headless=true -cp target/classes com.mirage.icon.IconExporter packaging/icons
+
 MODULES="javafx.controls,java.se,jdk.unsupported,jdk.charsets,jdk.localedata,jdk.zipfs"
 jpackage \
   --type app-image \
@@ -62,6 +65,7 @@ jpackage \
   --input target/dist \
   --main-jar "original-$jar" \
   --main-class com.mirage.Launcher \
+  --icon packaging/icons/icon.icns \
   --module-path target/fx \
   --add-modules "$MODULES" \
   --java-options "-Dfile.encoding=UTF-8" \

@@ -141,7 +141,7 @@ packaging/macos/build-app.sh
 packaging/macos/install.sh
 ```
 
-The build requires macOS, JDK 25+ (including `jpackage`), and Maven 3.9+. It writes `dist/Mirage.app`; the installer uses `/Applications` when writable (otherwise `~/Applications`) and `/usr/local/bin` for the command (otherwise `~/.local/bin`). Run `packaging/macos/install.sh --uninstall` to remove both. Set `MIRAGE_APPS_DIR` or `MIRAGE_BIN_DIR` to choose alternate install directories. The `Mirage` command opens a new app instance.
+The build requires macOS, JDK 25+ (including `jpackage`), and Maven 3.9+. The app icon is drawn in code and exported as native icon files during the bundle build, so no image asset or manual step is needed. It writes `dist/Mirage.app`; the installer uses `/Applications` when writable (otherwise `~/Applications`) and `/usr/local/bin` for the command (otherwise `~/.local/bin`). Run `packaging/macos/install.sh --uninstall` to remove both. Set `MIRAGE_APPS_DIR` or `MIRAGE_BIN_DIR` to choose alternate install directories. The `Mirage` command opens a new app instance.
 
 ## Releases
 
