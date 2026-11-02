@@ -48,7 +48,7 @@
 
 - [x] Flip the whole document horizontally/vertically
 - [x] Rotate the whole document 90 degrees clockwise/counterclockwise
-- [ ] Crop the whole document to the selection bounds
+- [x] Crop the whole document to the selection bounds
 - [ ] Resize canvas without scaling artwork
   - [ ] Set width/height and choose an anchor
   - [ ] Keep existing pixels in place relative to the anchor; expose transparent pixels

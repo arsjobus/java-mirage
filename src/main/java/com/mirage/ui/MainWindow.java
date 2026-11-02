@@ -1,6 +1,7 @@
 package com.mirage.ui;
 
 import com.mirage.commands.CommandManager;
+import com.mirage.commands.CropDocumentCommand;
 import com.mirage.commands.FlipDocumentCommand;
 import com.mirage.commands.RotateDocumentCommand;
 import com.mirage.commands.DocumentLayerStateCommand;
@@ -59,6 +60,7 @@ public final class MainWindow {
     private final CheckBox layerVisible = new CheckBox("Visible");
     private final CheckBox layerLocked = new CheckBox("Locked");
     private final Slider layerOpacity = new Slider(0, 100, 100);
+    private MenuItem cropToSelectionItem;
     private boolean syncingLayerControls;
 
     private final EyedropperTool eyedropper = new EyedropperTool();
@@ -307,9 +309,12 @@ public final class MainWindow {
         rotateCounterclockwise.setOnAction(e -> rotateDocument(
                 RotateDocumentCommand.Direction.COUNTERCLOCKWISE
         ));
+        cropToSelectionItem = new MenuItem("Crop to Selection Bounds");
+        cropToSelectionItem.setOnAction(e -> cropToSelection());
         transform.getItems().addAll(
                 flipHorizontal, flipVertical, new SeparatorMenuItem(),
-                rotateClockwise, rotateCounterclockwise
+                rotateClockwise, rotateCounterclockwise,
+                new SeparatorMenuItem(), cropToSelectionItem
         );
         edit.getItems().addAll(new SeparatorMenuItem(), transform);
 
@@ -336,6 +341,22 @@ public final class MainWindow {
     private void rotateDocument(RotateDocumentCommand.Direction direction) {
         commands.execute(new RotateDocumentCommand(document, direction));
         document.setModified(true);
+        redraw();
+    }
+
+    private void cropToSelection() {
+        PixelSelection selection = document.getSelection();
+        if (selection == null) {
+            return;
+        }
+        PixelSelection.Bounds bounds = selection.bounds().orElse(null);
+        if (bounds == null) {
+            return;
+        }
+        commands.execute(new CropDocumentCommand(document));
+        document.setModified(true);
+        offsetX += bounds.x() * zoom;
+        offsetY += bounds.y() * zoom;
         redraw();
     }
 
@@ -1228,6 +1249,10 @@ public final class MainWindow {
     }
 
     private void redraw() {
+        PixelSelection selection = document.getSelection();
+        cropToSelectionItem.setDisable(
+                selection == null || selection.bounds().isEmpty()
+        );
         GraphicsContext gc = canvas.getGraphicsContext2D();
         renderer.render(
                 gc,
