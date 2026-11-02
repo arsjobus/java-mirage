@@ -34,15 +34,31 @@ jobs:
       - name: Build and test runnable JAR
         run: mvn --batch-mode clean package
 
+      - name: Build macOS app
+        if: matrix.platform == 'macos-arm64'
+        run: packaging/macos/build-app.sh
+
       - name: Rename platform JAR
         shell: bash
         run: mv target/mirage-0.1.0-SNAPSHOT.jar target/mirage-${{ matrix.platform }}.jar
+
+      - name: Archive macOS app
+        if: matrix.platform == 'macos-arm64'
+        run: ditto -c -k --sequesterRsrc --keepParent "dist/Mirage.app" "target/mirage-macos-arm64-app.zip"
 
       - name: Upload runnable JAR
         uses: actions/upload-artifact@v4
         with:
           name: mirage-${{ matrix.platform }}
           path: target/mirage-${{ matrix.platform }}.jar
+          if-no-files-found: error
+
+      - name: Upload macOS app
+        if: matrix.platform == 'macos-arm64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mirage-macos-arm64-app
+          path: target/mirage-macos-arm64-app.zip
           if-no-files-found: error
 
   release:
@@ -53,7 +69,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Download platform JARs
+      - name: Download platform packages
         uses: actions/download-artifact@v4
         with:
           path: release-assets
@@ -62,4 +78,4 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" release-assets/*.jar --generate-notes --repo "$GITHUB_REPOSITORY"
+        run: gh release create "$GITHUB_REF_NAME" release-assets/* --generate-notes --repo "$GITHUB_REPOSITORY"

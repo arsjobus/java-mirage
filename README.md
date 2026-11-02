@@ -132,9 +132,20 @@ java -jar target/mirage-0.1.0-SNAPSHOT.jar
 
 The JAR includes JavaFX native libraries for the OS and CPU architecture on which it was built. Build it separately on each target platform.
 
+## Install on macOS
+
+Build a native `Mirage.app` bundle with its own Java runtime, then install it in Applications and add the `Mirage` terminal command:
+
+```bash
+packaging/macos/build-app.sh
+packaging/macos/install.sh
+```
+
+The build requires macOS, JDK 25+ (including `jpackage`), and Maven 3.9+. It writes `dist/Mirage.app`; the installer uses `/Applications` when writable (otherwise `~/Applications`) and `/usr/local/bin` for the command (otherwise `~/.local/bin`). Run `packaging/macos/install.sh --uninstall` to remove both. Set `MIRAGE_APPS_DIR` or `MIRAGE_BIN_DIR` to choose alternate install directories. The `Mirage` command opens a new app instance.
+
 ## Releases
 
-Push a version tag such as `v0.1.0` to build and publish a GitHub Release with runnable JARs for macOS ARM64 and Windows x64:
+Push a version tag such as `v0.1.0` to build and publish runnable JARs for macOS ARM64 and Windows x64, plus a native macOS app bundle:
 
 ```bash
 git tag v0.1.0

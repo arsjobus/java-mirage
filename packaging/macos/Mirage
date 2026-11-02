@@ -1,0 +1,21 @@
+#!/bin/sh
+# Launch the installed Mirage app.
+set -eu
+
+APP_NAME="${MIRAGE_APP_NAME:-Mirage}"
+
+case "${1-}" in
+  -h|--help)
+    echo "usage: Mirage"
+    echo "Opens $APP_NAME."
+    exit 0
+    ;;
+esac
+
+if [ "$#" -gt 0 ]; then
+  echo "Mirage: this command does not accept arguments." >&2
+  echo "usage: Mirage" >&2
+  exit 2
+fi
+
+open -n -a "$APP_NAME"

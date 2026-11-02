@@ -1,5 +1,6 @@
 .DS_Store
 /target/
+/dist/
 /dependency-reduced-pom.xml
 /output/
 !/output/

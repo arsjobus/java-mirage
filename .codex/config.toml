@@ -1,0 +1,10 @@
+[mcp_servers.mirage]
+command = "java"
+args = [
+  "-jar",
+  "/Users/mypc/Documents/GitHub/java-mirage/target/mirage-0.1.0-SNAPSHOT.jar",
+  "--mcp",
+  "--output-dir",
+  "/Users/mypc/Documents/GitHub/java-mirage/output"
+]
+cwd = "/Users/mypc/Documents/GitHub/java-mirage"
